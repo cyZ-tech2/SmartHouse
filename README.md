@@ -261,17 +261,3 @@ DeletionRequest
 
 ---
 
-## 📁 Git
-
-```bash
-cd smart_home_project
-git init
-git add .
-git commit -m "Initial commit — plateforme maison intelligente"
-git remote add origin <ton-repo>
-git push -u origin main
-```
-
----
-
-Bon projet et bonne soutenance ! 🚀
