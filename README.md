@@ -216,5 +216,3 @@ Pour explorer la BDD :
 | Dépôt Git                                  | À faire (`git init`) |
 
 ---
-
-Bon projet et bonne soutenance ! 🚀
