@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import API from "../api";
 
 export default function Register() {
@@ -7,41 +7,79 @@ export default function Register() {
     username: "", email: "", password: "",
     first_name: "", last_name: "",
     age: 18, gender: "N", date_naissance: "",
-    role: "parent",
   });
   const [error, setError] = useState("");
-  const [ok, setOk] = useState(false);
-  const nav = useNavigate();
+  const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const set = (k, v) => setForm({ ...form, [k]: v });
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess(null);
+    setLoading(true);
     try {
-      await API.post("/register/", form);
-      setOk(true);
-      setTimeout(() => nav("/login"), 2000);
+      const { data } = await API.post("/register/", form);
+      setSuccess(data);
     } catch (err) {
       const data = err.response?.data;
-      setError(data ? JSON.stringify(data, null, 2) : "Erreur inscription.");
+      // Affichage propre des erreurs
+      if (typeof data === "string") setError(data);
+      else if (data?.email) setError(Array.isArray(data.email) ? data.email[0] : data.email);
+      else if (data?.username) setError("Pseudo : " + (Array.isArray(data.username) ? data.username[0] : data.username));
+      else if (data?.password) setError("Mot de passe : " + (Array.isArray(data.password) ? data.password[0] : data.password));
+      else setError("Erreur lors de l'inscription. Vérifiez vos informations.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <main className="container" id="main">
+        <div className="form" style={{ textAlign: "center" }}>
+          <h2>✔ Inscription réussie !</h2>
+          <div className="alert success" style={{ textAlign: "left" }}>
+            <p>Bonjour <strong>{success.username}</strong>,</p>
+            <p>Votre compte a été créé. Un email de validation a été envoyé à :</p>
+            <p style={{ fontSize: "1.1em", margin: "10px 0" }}>
+              <strong>📧 {success.email}</strong>
+            </p>
+            <p>Cliquez sur le lien dans l'email pour activer votre compte avant de vous connecter.</p>
+            <p>Rôle attribué automatiquement : <strong>{success.role}</strong></p>
+          </div>
+          {!success.email_sent && (
+            <div className="alert warning">
+              ⚠ L'envoi de l'email a échoué côté serveur. Contactez l'administrateur.
+            </div>
+          )}
+          <p>
+            <Link to="/login" className="btn">Aller à la page de connexion</Link>
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="container" id="main">
       <form className="form" onSubmit={submit} aria-labelledby="reg-title">
         <h2 id="reg-title">Inscription</h2>
-        <p style={{ fontSize: "0.85rem", color: "#666" }}>
-          Seuls les membres de la maison peuvent s'inscrire.
-          Un email de validation vous sera envoyé (simulé ici).
-        </p>
+
+        <div className="alert info">
+          🏠 <strong>Seuls les membres de la maison peuvent s'inscrire.</strong><br/>
+          Votre email doit avoir été pré-autorisé par l'administrateur.
+          Le rôle (parent ou enfant) sera attribué automatiquement.
+        </div>
 
         <label htmlFor="u">Nom d'utilisateur (pseudo)</label>
         <input id="u" value={form.username} onChange={(e) => set("username", e.target.value)} required />
 
         <label htmlFor="e">Email</label>
-        <input id="e" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} required />
+        <input id="e" type="email" value={form.email}
+               onChange={(e) => set("email", e.target.value)} required
+               placeholder="votre.email@exemple.com" />
 
         <label htmlFor="p">Mot de passe (4+ caractères)</label>
         <input id="p" type="password" value={form.password}
@@ -69,16 +107,10 @@ export default function Register() {
         <input id="dn" type="date" value={form.date_naissance}
                onChange={(e) => set("date_naissance", e.target.value)} />
 
-        <label htmlFor="r">Rôle dans la maison</label>
-        <select id="r" value={form.role} onChange={(e) => set("role", e.target.value)}>
-          <option value="parent">Parent</option>
-          <option value="enfant">Enfant</option>
-          <option value="visiteur">Visiteur</option>
-        </select>
-
-        <button type="submit">S'inscrire</button>
-        {error && <pre className="error" role="alert" style={{ whiteSpace: "pre-wrap", fontSize: "0.8rem" }}>{error}</pre>}
-        {ok && <p className="success" role="status">✔ Inscription réussie. Email de validation envoyé (simulé). Redirection…</p>}
+        <button type="submit" disabled={loading}>
+          {loading ? "Envoi…" : "S'inscrire"}
+        </button>
+        {error && <p className="error" role="alert">{error}</p>}
         <p style={{ marginTop: "1rem", textAlign: "center" }}>
           Déjà un compte ? <Link to="/login">Connectez-vous</Link>
         </p>

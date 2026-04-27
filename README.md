@@ -1,43 +1,22 @@
 # 🏠 Maison Intelligente — Plateforme Web
 
-Projet CY Tech ING1 2025-2026 — Développement Web.
-Plateforme complète de gestion d'une maison intelligente avec objets connectés,
-services domotiques, niveaux utilisateurs, historique et statistiques.
+Projet CY Tech ING1 2025-2026.
+Plateforme complète de gestion d'une maison intelligente : objets connectés,
+services domotiques, niveaux utilisateurs, historique, statistiques.
 
-**Stack :** Django 5 + DRF + JWT · React 18 + Vite · SQLite · Responsive (mobile-first).
-
----
-
-## 📦 Architecture
-
-```
-smart_home_project/
-├── backend/          # Django + DRF + JWT (port 8000)
-│   ├── api/          # App principale (models, views, serializers)
-│   ├── smart_home/   # Config Django
-│   └── requirements.txt
-├── frontend/         # React + Vite (port 5173)
-│   └── src/
-│       ├── components/   # Navbar, ProtectedRoute
-│       └── pages/        # Toutes les pages
-└── README.md
-```
+**Stack :** Django 5 + DRF + JWT · React 18 + Vite · SQLite · Gmail SMTP · Mobile-first.
 
 ---
 
-## 🚀 Lancement rapide
+## 🚀 Lancement
 
-### 1. Backend (Django)
+### 1. Backend Django
 
-```bash
+```powershell
 cd backend
 python -m venv venv
-
-# Linux/Mac
-source venv/bin/activate
-# Windows
-venv\Scripts\activate
-
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Linux/Mac
 pip install -r requirements.txt
 python manage.py makemigrations api
 python manage.py migrate
@@ -45,195 +24,197 @@ python manage.py seed
 python manage.py runserver
 ```
 
-Backend : http://127.0.0.1:8000 · Admin Django : http://127.0.0.1:8000/admin
+→ http://127.0.0.1:8000 (admin Django : http://127.0.0.1:8000/admin)
 
-### 2. Frontend (React)
+### 2. Frontend React
 
 Dans un autre terminal :
 
-```bash
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-Frontend : http://127.0.0.1:5173
+→ http://127.0.0.1:5173
 
 ---
 
-## 👤 Comptes de test
+## 🔐 Inscription : qui peut s'inscrire ?
 
-| Username | Password    | Niveau         | Accès                                 |
-|----------|-------------|----------------|----------------------------------------|
-| alice    | demo1234    | expert         | Tous les modules                       |
-| bob      | demo1234    | avancé         | Information + Visualisation + Gestion  |
-| charlie  | demo1234    | intermédiaire  | Information + Visualisation            |
-| demo     | demo1234    | débutant       | Information + Visualisation            |
-| admin    | admin1234   | superuser      | Django admin (gestion globale)         |
+**Seuls les emails pré-autorisés** par l'administrateur peuvent créer un compte.
+La liste est définie dans `backend/api/allowed_members.py`. Le **rôle (parent ou enfant)
+est attribué automatiquement** depuis cette liste — l'utilisateur ne le choisit pas.
 
----
+**Visiteur** : navigue librement sans inscription (filtres, vue d'ensemble),
+mais ne peut pas voir les détails des objets/services.
 
-## ✅ Fonctionnalités (alignées sur le cahier des charges PDF)
+### Emails actuellement autorisés (pré-remplis)
 
-### Module Information (visiteur)
-- Page d'accueil avec présentation ("free tour")
-- Liste des objets connectés en lecture seule
-- Recherche avec filtres : nom/description/marque, type, pièce, catégorie, état
-- Liste des services/outils proposés (5 types : énergie, sécurité, confort, divertissement, santé)
-- Bouton inscription
-
-### Module Visualisation (débutant/intermédiaire)
-- Inscription complète (pseudo, email, prénom/nom, âge, genre, date de naissance, rôle)
-- Envoi d'email de validation (simulé) avec token UUID
-- Vérification login/mot de passe via JWT
-- Profil public : pseudo, âge, genre, date de naissance, rôle, photo, niveau, points
-- Profil privé : nom, prénom, changement mot de passe
-- **Upload de photo de profil**
-- Consulter le profil des autres membres
-- Consulter en détail les objets et les services (attributs : température, état, batterie,
-  connectivité, marque, horaires, valeurs, dernière maintenance)
-- Recherche avec ≥ 2 filtres (objets ET services)
-- Système de points : +0.25/connexion, +0.5/consultation
-- **Choix manuel de niveau** (page `/level`) parmi ceux débloqués
-- Compteur de connexions et d'actions
-- Historique personnel des actions
-
-### Module Gestion (avancé/expert)
-- Ajouter un objet connecté (avec horaires de fonctionnement + catégorie)
-- Modifier un objet (tous ses attributs + horaires)
-- **Demander la suppression d'un objet** (envoie une requête à l'admin)
-- Suivi de ses propres demandes de suppression (seules celles en attente sont listées)
-- Activer / désactiver un objet (toggle)
-- **Détection automatique des objets nécessitant maintenance** (batterie < 20% ou > 6 mois sans révision)
-- Page Maintenance dédiée avec **bouton "Marquer comme réparé"** (recharge batterie + datation maintenance)
-- **Historique global** des actions sur les objets (tous utilisateurs confondus)
-- Statistiques : nombre d'objets, actifs, consommation kWh, répartition par type et pièce
-- **Export CSV** des objets et de la consommation
-
-### Module Administration (admin uniquement)
-- Page **"🛡 Gérer demandes"** (accessible via le menu Gestion)
-- Boutons **"Supprimer"** (approuve + supprime l'objet) et **"Refuser"** (conserve l'objet)
-- Une fois traitée, la demande disparaît pour l'admin ET l'utilisateur
-- **Suppression directe** depuis la page détail d'un objet (bouton "Supprimer (admin)" au lieu de "Demander")
-
-### Gestion par l'administrateur (Django Admin)
-- Approuver/refuser les demandes de suppression (actions groupées)
-- Valider les inscriptions (champ `is_approved`)
-- Gérer utilisateurs, catégories, objets, services, pièces
-- Ajuster manuellement points et niveaux
+| Email                       | Rôle    | Compte créé ? |
+|-----------------------------|---------|---------------|
+| alice@maison.fr             | parent  | ✔ (alice/demo1234)  |
+| bob@maison.fr               | parent  | ✔ (bob/demo1234)    |
+| charlie@maison.fr           | enfant  | ✔ (charlie/demo1234)|
+| demo@maison.fr              | parent  | ✔ (demo/demo1234)   |
+| admin@maison.fr             | parent  | ✔ (admin/admin1234) |
+| acfiren12@gmail.com         | parent  | ❌ libre              |
+| famille.dupont@gmail.com    | parent  | ❌ libre              |
+| lucas.dupont@gmail.com      | enfant  | ❌ libre              |
+| marie.martin@gmail.com      | parent  | ❌ libre              |
 
 ---
 
-## 🏆 Système de niveaux et points
+## 📧 Email de validation (Gmail SMTP)
 
-| Niveau         | Points requis | Module débloqué        |
-|----------------|---------------|------------------------|
-| Débutant       | 0             | Information, Visualisation |
-| Intermédiaire  | 5             | Information, Visualisation |
-| Avancé         | 10            | + Gestion              |
-| Expert         | 15            | + Gestion étendu       |
+Quand un utilisateur s'inscrit, **un vrai email** est envoyé via Gmail avec un lien
+de validation. L'utilisateur doit cliquer sur ce lien avant de pouvoir se connecter.
 
-**Cumul de points :** +0.25 par connexion, +0.5 par consultation d'un objet ou service.
-L'utilisateur peut **choisir manuellement** son niveau parmi ceux débloqués via `/level`.
+**Configuration actuelle** (dans `settings.py`) :
+- Compte expéditeur : `acfiren12@gmail.com`
+- Mot de passe d'application : configuré
 
----
+**⚠️ SÉCURITÉ — IMPORTANT :**
+- Le mot de passe d'application Gmail est en clair dans `settings.py` pour faciliter
+  la démo. Pour une vraie mise en production, il faudrait l'externaliser dans un
+  fichier `.env` ignoré par git.
+- Si le code est partagé, **révoquer ce mot de passe** :
+  https://myaccount.google.com/apppasswords
 
-## 🔧 API REST — Endpoints principaux
-
-### Auth
-| Méthode | URL                          | Description                         |
-|---------|------------------------------|-------------------------------------|
-| POST    | `/api/register/`             | Inscription                         |
-| POST    | `/api/login/`                | Connexion → JWT                     |
-| POST    | `/api/token/refresh/`        | Rafraîchir le token                 |
-| POST    | `/api/change-password/`      | Changer mot de passe                |
-| GET     | `/api/verify/<token>/`       | Valider email                       |
-
-### Profil
-| Méthode | URL                          | Description                         |
-|---------|------------------------------|-------------------------------------|
-| GET/PUT | `/api/profile/`              | Voir/modifier profil (+ upload photo)|
-| POST    | `/api/profile/set-level/`    | Choisir son niveau                  |
-| GET     | `/api/users/`                | Liste des autres membres            |
-
-### Objets
-| Méthode | URL                          | Description                         |
-|---------|------------------------------|-------------------------------------|
-| GET     | `/api/devices/`              | Liste (filtres : `type`, `room`, `category`, `status`, `brand`, `q`) |
-| GET     | `/api/devices/<id>/`         | Détail (+0.5 pts si connecté)       |
-| POST    | `/api/devices/`              | Créer (auth)                        |
-| PUT     | `/api/devices/<id>/`         | Modifier (auth)                     |
-| POST    | `/api/devices/<id>/toggle/`  | Activer/désactiver                  |
-| GET     | `/api/maintenance/`          | Objets à réviser                    |
-
-### Services, Pièces, Catégories
-| Méthode | URL                          | Description                         |
-|---------|------------------------------|-------------------------------------|
-| GET     | `/api/services/`             | Liste (filtres : `type`, `active`, `q`) |
-| GET     | `/api/services/<id>/`        | Détail                              |
-| GET     | `/api/rooms/`                | Liste pièces                        |
-| GET     | `/api/categories/`           | Liste catégories                    |
-
-### Historique / Stats / Exports
-| Méthode | URL                                | Description                  |
-|---------|------------------------------------|------------------------------|
-| GET     | `/api/actions/me/`                 | Mon historique               |
-| GET     | `/api/actions/history/`            | Historique global (auth)     |
-| GET     | `/api/stats/summary/`              | Résumé stats                 |
-| GET     | `/api/stats/export/devices/`       | Export CSV objets            |
-| GET     | `/api/stats/export/consumption/`   | Export CSV consommation      |
-
-### Demandes de suppression
-| Méthode | URL                          | Description                         |
-|---------|------------------------------|-------------------------------------|
-| GET     | `/api/deletion-requests/`    | Mes demandes (user) / toutes (admin)|
-| POST    | `/api/deletion-requests/`    | Créer une demande                   |
+**Pour désactiver l'envoi réel** (mode console — emails affichés dans le terminal) :
+dans `settings.py`, commente le bloc SMTP et décommente la ligne `EmailBackend = console`.
 
 ---
 
-## 📐 Modèles (UML simplifié)
+## 👤 Permissions par rôle
+
+| Action                          | Visiteur | Enfant | Parent (déb/inter) | Parent (avancé/expert) | Admin |
+|---------------------------------|----------|--------|--------------------|------------------------|-------|
+| Voir liste objets/services      | ✔        | ✔      | ✔                  | ✔                      | ✔     |
+| Voir détails (objet/service)    | ❌       | ✔      | ✔                  | ✔                      | ✔     |
+| Modifier son profil             | -        | ✔      | ✔                  | ✔                      | ✔     |
+| Toggle objet (non-sécurité)     | ❌       | ✔      | ✔                  | ✔                      | ✔     |
+| Toggle objet sécurité (alarme,…)| ❌       | ❌     | ✔                  | ✔                      | ✔     |
+| Ajouter / Modifier objet        | ❌       | ❌     | ❌                 | ✔                      | ✔     |
+| Demander suppression objet      | ❌       | ❌     | ❌                 | ✔                      | -     |
+| Maintenance / Stats / Historique| ❌       | ❌     | ❌                 | ✔                      | ✔     |
+| Suppression directe objet       | ❌       | ❌     | ❌                 | ❌                     | ✔     |
+| Approuver/refuser demandes      | ❌       | ❌     | ❌                 | ❌                     | ✔     |
+
+**Objets de sécurité** : alarme, caméra, porte, détecteur — réservés aux parents.
+
+---
+
+## 🏆 Niveaux et points
+
+| Niveau         | Points | Module débloqué (sauf enfants) |
+|----------------|--------|--------------------------------|
+| Débutant       | 0      | Information, Visualisation     |
+| Intermédiaire  | 5      | Information, Visualisation     |
+| Avancé         | 10     | + Gestion                      |
+| Expert         | 15     | + Gestion étendu               |
+
+- Connexion : **+0.25** point
+- Consultation d'objet/service : **+0.5** point
+- Choix manuel du niveau via `/level` (parmi ceux débloqués)
+- Les **enfants n'accèdent jamais au module Gestion**, même au niveau avancé.
+
+---
+
+## 🔧 Scénario de test rapide
+
+### Tester l'inscription avec validation email
+
+1. Va sur http://localhost:5173/register
+2. Inscris-toi avec `acfiren12@gmail.com` (autorisé, parent)
+3. Reçois l'email Gmail dans ta boîte
+4. Clique sur le lien → page Verify → "Compte activé"
+5. Connecte-toi normalement
+
+### Tester l'admin
+
+1. Connecte-toi avec `admin / admin1234`
+2. Une demande de suppression existe déjà (Aspirateur robot par bob)
+3. Va dans menu Gestion → "🛡 Gérer demandes"
+4. Clique "🗑 Supprimer" ou "✖ Refuser" → la demande disparaît
+
+### Tester les restrictions enfant
+
+1. Connecte-toi avec `charlie / demo1234`
+2. Va sur l'Alarme → bouton Activer/Désactiver est **caché** (objet de sécurité)
+3. Va sur la TV → bouton Activer/Désactiver fonctionne (objet non-sécurité)
+4. Le menu "Gestion" n'apparaît pas dans la barre du haut
+
+---
+
+## 📁 Structure
 
 ```
-User (AbstractUser personnalisé)
-├─ username, email, password, first_name, last_name
-├─ age, role (parent/enfant/visiteur), gender, date_naissance, photo
-├─ level, points, nb_connexions, nb_actions
-└─ is_approved, email_verified, verification_token
-
-Category          Room              Service
-├─ name            ├─ name            ├─ name, description
-├─ icon            └─ type            ├─ type (énergie/sécurité/…)
-└─ description                        └─ related_device (FK Device)
-
-Device                                 Action               Stat
-├─ name, type, description              ├─ user (FK)          ├─ device (FK)
-├─ category (FK), room (FK)             ├─ action_type        ├─ consumption
-├─ status, battery, value, target       ├─ device (FK)        └─ date
-├─ brand, start_time, end_time          ├─ description
-├─ last_maintenance                     └─ date
-└─ user (FK)
-
-DeletionRequest
-├─ device (FK), requested_by (FK)
-├─ reason, status (pending/approved/rejected)
-└─ created_at, resolved_at
+smart_home_project/
+├── backend/
+│   ├── api/
+│   │   ├── allowed_members.py   ← Liste des emails autorisés
+│   │   ├── models.py            ← User, Device, Service, Action, Stat, …
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── admin.py
+│   │   └── management/commands/seed.py
+│   ├── smart_home/settings.py   ← Config Gmail SMTP
+│   └── manage.py
+├── frontend/
+│   └── src/
+│       ├── components/
+│       │   ├── Navbar.jsx       ← Menus déroulants
+│       │   └── ProtectedRoute.jsx
+│       └── pages/               ← 17 pages React
+└── README.md
 ```
 
-## 🧪 Scénario de test recommandé
+---
 
-1. Lance backend + frontend
-2. Va sur http://localhost:5173 en visiteur → teste filtres sur `/devices` et `/services`
-3. Connecte-toi avec `demo / demo1234` (débutant, 0 pts)
-4. Consulte 10 objets → tu passes intermédiaire automatiquement (5 pts)
-5. Continue → avance à 10 pts → module Gestion débloqué
-6. Va sur `/level` pour choisir manuellement ton niveau
-7. Avec `alice / demo1234` (expert) teste :
-   - `/devices/add` (ajouter objet avec horaires)
-   - `/devices/:id/edit` (modifier)
-   - Demander suppression d'un objet → voir dans `/my-requests`
-   - `/maintenance` (objets à réviser)
-   - `/history` (log global)
-   - `/stats` → télécharger CSV
-8. Admin : http://localhost:8000/admin (`admin / admin1234`) → approuver une demande
+## 🗄 Base de données : SQLite (relationnelle)
+
+**SQLite est explicitement autorisée par le cahier des charges** (point 6, page 11).
+C'est une vraie base de données SQL relationnelle, gérée via les migrations Django,
+avec 8 tables (User, Room, Category, Device, Service, Action, Stat, DeletionRequest)
+et leurs clés étrangères.
+
+Pour explorer la BDD :
+- Django admin (interface web) : http://127.0.0.1:8000/admin
+- DB Browser for SQLite (gratuit) : https://sqlitebrowser.org/dl/
+- Extension VS Code "SQLite Viewer"
 
 ---
+
+## ✅ Conformité au cahier des charges
+
+| Exigence                                  | Statut |
+|-------------------------------------------|--------|
+| Module Information (visiteur, free tour)  | ✔     |
+| Module Visualisation (auth, profil)       | ✔     |
+| Module Gestion (CRUD, horaires, maintenance) | ✔  |
+| Vérifier membre maison (avant inscription)| ✔     |
+| Email de validation                        | ✔ Gmail SMTP |
+| Login/mot de passe                         | ✔ JWT |
+| Modifier profil + photo                    | ✔     |
+| Consulter profils autres membres           | ✔     |
+| Recherche objets ≥ 2 filtres              | ✔ (5 filtres) |
+| Recherche services ≥ 2 filtres            | ✔ (3 filtres) |
+| Système de points (+0.25 / +0.5)          | ✔     |
+| Niveaux (débutant/intermédiaire/avancé/expert) | ✔ |
+| Choix manuel du niveau                    | ✔     |
+| Compteur connexions/actions               | ✔     |
+| Solliciter suppression à l'admin          | ✔     |
+| Maintenance des objets                    | ✔ avec bouton réparer |
+| Statistiques + rapports CSV               | ✔     |
+| Historique des objets                     | ✔     |
+| BDD relationnelle (pas de fichiers)       | ✔ SQLite |
+| Frameworks (pas de CMS)                   | ✔ Django + React |
+| Responsive mobile-first                    | ✔     |
+| Accessibilité WCAG                         | ✔ skip-link, aria, sémantique |
+| Dépôt Git                                  | À faire (`git init`) |
+
+---
+
+Bon projet et bonne soutenance ! 🚀

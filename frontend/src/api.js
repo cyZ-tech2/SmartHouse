@@ -35,9 +35,16 @@ export const refreshUser = async () => {
 
 export const isLoggedIn = () => !!localStorage.getItem("access");
 
+export const isChild = () => {
+  const u = getUser();
+  return u && u.role === "enfant";
+};
+
 export const isAdvanced = () => {
   const u = getUser();
-  return u && (u.level === "avance" || u.level === "expert");
+  // Un enfant n'a JAMAIS accès au module Gestion
+  if (!u || u.role === "enfant") return false;
+  return u.level === "avance" || u.level === "expert";
 };
 
 export const isAdmin = () => {

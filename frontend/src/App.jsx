@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Verify from "./pages/Verify";
 import Dashboard from "./pages/Dashboard";
 import Devices from "./pages/Devices";
 import DeviceDetail from "./pages/DeviceDetail";
@@ -25,14 +26,15 @@ export default function App() {
     <>
       <Navbar />
       <Routes>
-        {/* Module Information */}
+        {/* Module Information (visiteur) */}
         <Route path="/"             element={<Home />} />
         <Route path="/login"        element={<Login />} />
         <Route path="/register"     element={<Register />} />
+        <Route path="/verify/:token" element={<Verify />} />
         <Route path="/devices"      element={<Devices />} />
         <Route path="/services"     element={<Services />} />
 
-        {/* Détail = CONNECTÉ OBLIGATOIRE (visiteur bloqué) */}
+        {/* Détail = connecté obligatoire */}
         <Route path="/devices/:id"   element={<ProtectedRoute><DeviceDetail /></ProtectedRoute>} />
         <Route path="/services/:id"  element={<ProtectedRoute><ServiceDetail /></ProtectedRoute>} />
 
@@ -42,7 +44,7 @@ export default function App() {
         <Route path="/level"        element={<ProtectedRoute><LevelChange /></ProtectedRoute>} />
         <Route path="/my-requests"  element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
 
-        {/* Module Gestion */}
+        {/* Module Gestion (avancé/expert ET pas enfant) */}
         <Route path="/devices/add"       element={<ProtectedRoute requireAdvanced><AddDevice /></ProtectedRoute>} />
         <Route path="/devices/:id/edit"  element={<ProtectedRoute requireAdvanced><EditDevice /></ProtectedRoute>} />
         <Route path="/maintenance"       element={<ProtectedRoute requireAdvanced><Maintenance /></ProtectedRoute>} />

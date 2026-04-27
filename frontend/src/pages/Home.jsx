@@ -9,6 +9,9 @@ export default function Home() {
           Centralisez la gestion de vos objets connectés et profitez de services
           domotiques variés : thermostats, caméras, appareils ménagers, volets, arrosage…
         </p>
+        <p style={{ fontSize: "0.9em", opacity: 0.85 }}>
+          🔓 Mode visiteur libre · 🏠 Inscription réservée aux membres de la maison
+        </p>
         <Link to="/devices" className="btn">Explorer les objets</Link>
         <Link to="/services" className="btn">Voir les services</Link>
         <Link to="/register" className="btn">S'inscrire</Link>

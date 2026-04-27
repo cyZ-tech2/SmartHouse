@@ -7,6 +7,7 @@ export default function AdminRequests() {
   const [requests, setRequests] = useState([]);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(null); // id en cours de traitement
 
   useEffect(() => {
     if (!isAdmin()) {
@@ -19,28 +20,44 @@ export default function AdminRequests() {
   const load = () => API.get("/deletion-requests/").then((r) => setRequests(r.data));
 
   const approve = async (id, deviceName) => {
-    if (!confirm(`Supprimer définitivement "${deviceName}" ?\n\nCela supprimera l'objet ET la demande.`)) return;
-    setErr(""); setMsg("");
+    if (!confirm(`Supprimer définitivement « ${deviceName} » ?\n\nCela supprimera l'objet ET la demande.`)) return;
+    setErr(""); setMsg(""); setBusy(id);
     try {
-      await API.post(`/deletion-requests/${id}/approve/`);
-      setMsg(`✔ Objet "${deviceName}" supprimé. Demande traitée.`);
-      load();
-      setTimeout(() => setMsg(""), 3000);
+      const { data } = await API.post(`/deletion-requests/${id}/approve/`);
+      // Lecture correcte : backend renvoie `detail`
+      setMsg(data?.detail || `✔ « ${deviceName} » supprimé.`);
+      await load();
+      setTimeout(() => setMsg(""), 3500);
     } catch (ex) {
-      setErr(ex.response?.data?.detail || "Erreur");
+      // Lecture correcte de l'erreur — gère plusieurs formats possibles
+      const detail = ex.response?.data?.detail
+        || (typeof ex.response?.data === "string" ? ex.response.data : null)
+        || ex.message
+        || "Erreur serveur";
+      setErr(`Échec : ${detail}`);
+      setTimeout(() => setErr(""), 4000);
+    } finally {
+      setBusy(null);
     }
   };
 
   const reject = async (id, deviceName) => {
-    if (!confirm(`Refuser la demande de suppression de "${deviceName}" ?`)) return;
-    setErr(""); setMsg("");
+    if (!confirm(`Refuser la demande de suppression de « ${deviceName} » ?`)) return;
+    setErr(""); setMsg(""); setBusy(id);
     try {
-      await API.post(`/deletion-requests/${id}/reject/`);
-      setMsg(`✔ Demande pour "${deviceName}" refusée. L'objet est conservé.`);
-      load();
-      setTimeout(() => setMsg(""), 3000);
+      const { data } = await API.post(`/deletion-requests/${id}/reject/`);
+      setMsg(data?.detail || `✔ Demande pour « ${deviceName} » refusée.`);
+      await load();
+      setTimeout(() => setMsg(""), 3500);
     } catch (ex) {
-      setErr(ex.response?.data?.detail || "Erreur");
+      const detail = ex.response?.data?.detail
+        || (typeof ex.response?.data === "string" ? ex.response.data : null)
+        || ex.message
+        || "Erreur serveur";
+      setErr(`Échec : ${detail}`);
+      setTimeout(() => setErr(""), 4000);
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -81,12 +98,14 @@ export default function AdminRequests() {
                   <td>{new Date(r.created_at).toLocaleString("fr-FR")}</td>
                   <td>
                     <button className="btn danger"
+                            disabled={busy === r.id}
                             onClick={() => approve(r.id, r.device_name)}>
-                      🗑 Supprimer
+                      {busy === r.id ? "…" : "🗑 Supprimer"}
                     </button>
                     <button className="btn secondary"
+                            disabled={busy === r.id}
                             onClick={() => reject(r.id, r.device_name)}>
-                      ✖ Refuser
+                      {busy === r.id ? "…" : "✖ Refuser"}
                     </button>
                   </td>
                 </tr>

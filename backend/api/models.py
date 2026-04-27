@@ -35,6 +35,24 @@ class User(AbstractUser):
     LEVEL_THRESHOLDS = {"debutant": 0, "intermediaire": 5, "avance": 10, "expert": 15}
     LEVEL_ORDER = ["debutant", "intermediaire", "avance", "expert"]
 
+    # Types d'objets dont les ENFANTS ne peuvent pas modifier l'état
+    SECURITY_DEVICE_TYPES = {"alarme", "camera", "porte", "detecteur"}
+
+    def is_child(self):
+        return self.role == "enfant"
+
+    def can_toggle_device(self, device):
+        """Un enfant ne peut pas toggle les objets de sécurité."""
+        if self.is_child() and device.type in self.SECURITY_DEVICE_TYPES:
+            return False
+        return True
+
+    def can_access_management(self):
+        """Un enfant n'accède pas au module Gestion, même au niveau avancé."""
+        if self.is_child():
+            return False
+        return self.level in ("avance", "expert")
+
     def max_level_allowed(self):
         pts = self.points or 0
         for lvl in reversed(self.LEVEL_ORDER):

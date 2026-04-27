@@ -5,6 +5,19 @@ export default function ProtectedRoute({ children, requireAdvanced = false }) {
   if (!isLoggedIn()) return <Navigate to="/login" />;
   if (requireAdvanced) {
     const u = getUser();
+    // Bloquer les enfants peu importe leur niveau
+    if (u?.role === "enfant" || u?.is_child) {
+      return (
+        <main className="container" id="main">
+          <h1>Accès refusé</h1>
+          <div className="alert warning">
+            <p>🔒 Le module Gestion est réservé aux <strong>adultes (parents)</strong> de la maison.</p>
+            <p>Vous êtes connecté(e) en tant qu'<strong>enfant</strong>. Vous pouvez consulter
+               les objets et services, mais pas les modifier ni gérer la maintenance.</p>
+          </div>
+        </main>
+      );
+    }
     if (!u || (u.level !== "avance" && u.level !== "expert")) {
       return (
         <main className="container" id="main">

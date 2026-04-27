@@ -44,7 +44,7 @@ export default function Profile() {
       await API.put("/profile/", {
         username: form.username, email: form.email,
         first_name: form.first_name, last_name: form.last_name,
-        age: form.age, role: form.role,
+        age: form.age,
         gender: form.gender,
         date_naissance: form.date_naissance || null,
       });
@@ -164,12 +164,9 @@ export default function Profile() {
             <label>Date de naissance</label>
             <input type="date" value={form.date_naissance || ""}
                    onChange={(e) => set("date_naissance", e.target.value)} />
-            <label>Rôle</label>
-            <select value={form.role} onChange={(e) => set("role", e.target.value)}>
-              <option value="parent">Parent</option>
-              <option value="enfant">Enfant</option>
-              <option value="visiteur">Visiteur</option>
-            </select>
+            <p style={{ fontSize: "0.85em", color: "#666", marginTop: 10 }}>
+              ℹ Le rôle (parent / enfant) est fixé par l'administrateur et ne peut être modifié.
+            </p>
             <button type="submit">Enregistrer</button>
             <button type="button" className="btn secondary" style={{ marginTop: 10 }}
                     onClick={() => { setEdit(false); setForm(me); }}>Annuler</button>

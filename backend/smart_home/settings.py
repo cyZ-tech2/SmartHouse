@@ -86,3 +86,33 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+# ============================================================
+# CONFIGURATION EMAIL
+# ------------------------------------------------------------
+# Par défaut, les emails s'affichent dans le terminal du backend
+# (pratique pour développement, aucune config nécessaire).
+#
+# Pour ENVOYER de vrais emails via Gmail :
+#   1. Mets EMAIL_BACKEND ci-dessous sur la version SMTP
+#   2. Génère un mot de passe d'application Gmail :
+#      https://myaccount.google.com/apppasswords
+#   3. Mets-le dans EMAIL_HOST_PASSWORD
+#
+# ⚠️ NE PUSH JAMAIS UN VRAI MOT DE PASSE SUR GIT
+# ============================================================
+
+# --- Mode CONSOLE (par défaut, dev) ---
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# --- Mode SMTP Gmail (vrais emails) ---
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "acfiren12@gmail.com"
+EMAIL_HOST_PASSWORD = "aqubxazmdrhjejwc"  # mot de passe d'application Gmail (16 car)
+DEFAULT_FROM_EMAIL = "Maison Intelligente <acfiren12@gmail.com>"
+
+# URL frontend pour les liens dans les emails
+FRONTEND_URL = "http://127.0.0.1:5173"

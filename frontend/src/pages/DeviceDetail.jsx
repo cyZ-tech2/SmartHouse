@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import API, { isAdvanced, isAdmin } from "../api";
+import API, { isAdvanced, isAdmin, isChild, getUser } from "../api";
 import { dash } from "../utils";
 
 export default function DeviceDetail() {
@@ -13,6 +13,8 @@ export default function DeviceDetail() {
   const [reason, setReason] = useState("");
   const advanced = isAdvanced();
   const admin = isAdmin();
+  const child = isChild();
+  const user = getUser();
 
   const load = () => API.get(`/devices/${id}/`)
     .then((r) => setD(r.data))
@@ -21,20 +23,24 @@ export default function DeviceDetail() {
   useEffect(() => { load(); }, [id]);
 
   const toggle = async () => {
-    await API.post(`/devices/${id}/toggle/`);
-    setMsg("État modifié ✔");
-    load();
-    setTimeout(() => setMsg(""), 2000);
+    setError("");
+    try {
+      await API.post(`/devices/${id}/toggle/`);
+      setMsg("État modifié ✔");
+      load();
+      setTimeout(() => setMsg(""), 2000);
+    } catch (err) {
+      setError(err.response?.data?.detail || "Erreur");
+      setTimeout(() => setError(""), 3500);
+    }
   };
 
-  // Admin : suppression directe
   const deleteDirect = async () => {
     if (!confirm(`Supprimer définitivement "${d.name}" ?`)) return;
     await API.delete(`/devices/${id}/`);
     nav("/devices");
   };
 
-  // Utilisateur avancé : demande de suppression
   const requestDeletion = async (e) => {
     e.preventDefault();
     await API.post("/deletion-requests/", { device: id, reason });
@@ -44,12 +50,15 @@ export default function DeviceDetail() {
     setTimeout(() => setMsg(""), 3000);
   };
 
-  if (error) return <main className="container"><div className="alert error">{error}</div></main>;
+  if (error && !d) return <main className="container"><div className="alert error">{error}</div></main>;
   if (!d) return <main className="container"><p>Chargement…</p></main>;
 
   const horaire = (d.start_time || d.end_time)
     ? `${d.start_time || "—"} → ${d.end_time || "—"}`
     : "—";
+
+  // Un enfant ne peut PAS toggle les objets de sécurité
+  const childCannotToggle = child && d.is_security;
 
   return (
     <main className="container" id="main">
@@ -57,9 +66,17 @@ export default function DeviceDetail() {
       <h1>{d.name}</h1>
 
       {msg && <div className="alert success" role="status">{msg}</div>}
+      {error && d && <div className="alert error" role="alert">{error}</div>}
+
       {d.needs_maintenance && (
         <div className="alert warning">
           ⚠ Cet objet nécessite une maintenance (batterie faible ou révision dépassée).
+        </div>
+      )}
+
+      {child && d.is_security && (
+        <div className="alert info">
+          🔒 Cet objet de sécurité ne peut être contrôlé que par un parent.
         </div>
       )}
 
@@ -76,26 +93,36 @@ export default function DeviceDetail() {
         <p><strong>Dernière maintenance :</strong> {dash(d.last_maintenance)}</p>
         <p><strong>État :</strong>
           <span className={"badge " + d.status} style={{ marginLeft: 8 }}>{d.status_display}</span>
+          {d.is_security && (
+            <span className="badge info" style={{ marginLeft: 5 }}>🔒 Sécurité</span>
+          )}
         </p>
         <p><strong>Créé le :</strong> {new Date(d.created_at).toLocaleString("fr-FR")}</p>
 
-        {advanced && (
-          <div style={{ marginTop: "1rem" }}>
+        <div style={{ marginTop: "1rem" }}>
+          {/* Toggle : tous sauf enfants sur sécurité */}
+          {!childCannotToggle && (
             <button className="btn" onClick={toggle}>
               {d.status === "on" ? "⏻ Désactiver" : "⏼ Activer"}
             </button>
-            <Link to={`/devices/${id}/edit`} className="btn secondary">✎ Modifier</Link>
-            {admin ? (
-              <button className="btn danger" onClick={deleteDirect}>
-                🗑 Supprimer (admin)
-              </button>
-            ) : (
-              <button className="btn danger" onClick={() => setShowReq(!showReq)}>
-                🗑 Demander suppression
-              </button>
-            )}
-          </div>
-        )}
+          )}
+
+          {/* Modifier / Supprimer : avancé+ ET pas enfant */}
+          {advanced && (
+            <>
+              <Link to={`/devices/${id}/edit`} className="btn secondary">✎ Modifier</Link>
+              {admin ? (
+                <button className="btn danger" onClick={deleteDirect}>
+                  🗑 Supprimer (admin)
+                </button>
+              ) : (
+                <button className="btn danger" onClick={() => setShowReq(!showReq)}>
+                  🗑 Demander suppression
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </article>
 
       {showReq && !admin && (

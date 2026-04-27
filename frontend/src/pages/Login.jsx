@@ -6,17 +6,24 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const nav = useNavigate();
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
     try {
       const { data } = await API.post("/login/", { username, password });
       saveAuth(data);
       nav("/dashboard");
-    } catch {
-      setError("Identifiants invalides.");
+    } catch (err) {
+      const msg = err.response?.data?.detail
+        || (Array.isArray(err.response?.data) ? err.response.data[0] : null)
+        || "Identifiants invalides ou email non vérifié.";
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -31,13 +38,12 @@ export default function Login() {
         <input id="p" type="password" value={password}
                onChange={(e) => setPassword(e.target.value)}
                required autoComplete="current-password" />
-        <button type="submit">Se connecter</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Connexion…" : "Se connecter"}
+        </button>
         {error && <p className="error" role="alert">{error}</p>}
         <p style={{ marginTop: "1rem", textAlign: "center" }}>
           Pas de compte ? <Link to="/register">Inscrivez-vous</Link>
-        </p>
-        <p style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#666" }}>
-          Comptes de test : alice / bob / charlie / demo (mdp : <code>demo1234</code>)
         </p>
       </form>
     </main>

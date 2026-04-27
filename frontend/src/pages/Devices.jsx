@@ -45,6 +45,9 @@ export default function Devices() {
         {d.needs_maintenance && (
           <span className="badge warning" style={{ marginLeft: 5 }}>⚠ maintenance</span>
         )}
+        {d.is_security && (
+          <span className="badge info" style={{ marginLeft: 5 }}>🔒</span>
+        )}
       </p>
     </>
   );
