@@ -65,27 +65,6 @@ mais ne peut pas voir les détails des objets/services.
 
 ---
 
-## 📧 Email de validation (Gmail SMTP)
-
-Quand un utilisateur s'inscrit, **un vrai email** est envoyé via Gmail avec un lien
-de validation. L'utilisateur doit cliquer sur ce lien avant de pouvoir se connecter.
-
-**Configuration actuelle** (dans `settings.py`) :
-- Compte expéditeur : `acfiren12@gmail.com`
-- Mot de passe d'application : configuré
-
-**⚠️ SÉCURITÉ — IMPORTANT :**
-- Le mot de passe d'application Gmail est en clair dans `settings.py` pour faciliter
-  la démo. Pour une vraie mise en production, il faudrait l'externaliser dans un
-  fichier `.env` ignoré par git.
-- Si le code est partagé, **révoquer ce mot de passe** :
-  https://myaccount.google.com/apppasswords
-
-**Pour désactiver l'envoi réel** (mode console — emails affichés dans le terminal) :
-dans `settings.py`, commente le bloc SMTP et décommente la ligne `EmailBackend = console`.
-
----
-
 ## 👤 Permissions par rôle
 
 | Action                          | Visiteur | Enfant | Parent (déb/inter) | Parent (avancé/expert) | Admin |
@@ -175,44 +154,8 @@ smart_home_project/
 
 ## 🗄 Base de données : SQLite (relationnelle)
 
-**SQLite est explicitement autorisée par le cahier des charges** (point 6, page 11).
-C'est une vraie base de données SQL relationnelle, gérée via les migrations Django,
-avec 8 tables (User, Room, Category, Device, Service, Action, Stat, DeletionRequest)
-et leurs clés étrangères.
-
 Pour explorer la BDD :
 - Django admin (interface web) : http://127.0.0.1:8000/admin
 - DB Browser for SQLite (gratuit) : https://sqlitebrowser.org/dl/
-- Extension VS Code "SQLite Viewer"
-
 ---
 
-## ✅ Conformité au cahier des charges
-
-| Exigence                                  | Statut |
-|-------------------------------------------|--------|
-| Module Information (visiteur, free tour)  | ✔     |
-| Module Visualisation (auth, profil)       | ✔     |
-| Module Gestion (CRUD, horaires, maintenance) | ✔  |
-| Vérifier membre maison (avant inscription)| ✔     |
-| Email de validation                        | ✔ Gmail SMTP |
-| Login/mot de passe                         | ✔ JWT |
-| Modifier profil + photo                    | ✔     |
-| Consulter profils autres membres           | ✔     |
-| Recherche objets ≥ 2 filtres              | ✔ (5 filtres) |
-| Recherche services ≥ 2 filtres            | ✔ (3 filtres) |
-| Système de points (+0.25 / +0.5)          | ✔     |
-| Niveaux (débutant/intermédiaire/avancé/expert) | ✔ |
-| Choix manuel du niveau                    | ✔     |
-| Compteur connexions/actions               | ✔     |
-| Solliciter suppression à l'admin          | ✔     |
-| Maintenance des objets                    | ✔ avec bouton réparer |
-| Statistiques + rapports CSV               | ✔     |
-| Historique des objets                     | ✔     |
-| BDD relationnelle (pas de fichiers)       | ✔ SQLite |
-| Frameworks (pas de CMS)                   | ✔ Django + React |
-| Responsive mobile-first                    | ✔     |
-| Accessibilité WCAG                         | ✔ skip-link, aria, sémantique |
-| Dépôt Git                                  | À faire (`git init`) |
-
----
