@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import API from "../api";
+import API, { isAdmin } from "../api";
 
 const LEVEL_LABEL = {
   debutant: "Débutant", intermediaire: "Intermédiaire",
@@ -22,6 +22,11 @@ export default function Profile() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoVer, setPhotoVer] = useState(Date.now());
 
+  // Admin : voir détails d'un utilisateur cliqué
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const admin = isAdmin();
+
   const load = () => {
     API.get("/profile/").then((r) => {
       setMe(r.data);
@@ -41,7 +46,7 @@ export default function Profile() {
     e.preventDefault();
     setErr(""); setMsg("");
     try {
-      await API.put("/profile/", {
+      await API.patch("/profile/", {
         username: form.username, email: form.email,
         first_name: form.first_name, last_name: form.last_name,
         age: form.age,
@@ -57,6 +62,8 @@ export default function Profile() {
     }
   };
 
+  // BUG FIX : on fait un PATCH (partial update) au lieu de PUT
+  // pour ne pas avoir à renvoyer username, email, etc.
   const uploadPhoto = async (e) => {
     e.preventDefault();
     if (!photoFile) return;
@@ -64,12 +71,12 @@ export default function Profile() {
     try {
       const fd = new FormData();
       fd.append("photo", photoFile);
-      await API.put("/profile/", fd, {
+      await API.patch("/profile/", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setMsg("Photo mise à jour ✔");
       setPhotoFile(null);
-      setPhotoVer(Date.now()); // casse le cache
+      setPhotoVer(Date.now());
       load();
       setTimeout(() => setMsg(""), 2500);
     } catch (ex) {
@@ -91,7 +98,38 @@ export default function Profile() {
     }
   };
 
-  // URL photo avec timestamp anti-cache
+  // ADMIN : suspendre / réactiver un user
+  const suspendUser = async (u) => {
+    if (!confirm(`Suspendre ${u.username} ?\n\nIl ne pourra plus se connecter tant qu'il n'aura pas été réactivé.`)) return;
+    try {
+      const { data } = await API.post(`/admin/users/${u.id}/suspend/`);
+      setMsg(data.detail);
+      load();
+      // Mettre à jour le user sélectionné
+      if (selectedUser?.id === u.id) {
+        setSelectedUser({ ...selectedUser, email_verified: false });
+      }
+      setTimeout(() => setMsg(""), 3000);
+    } catch (ex) {
+      setErr(ex.response?.data?.detail || "Erreur");
+    }
+  };
+
+  const unsuspendUser = async (u) => {
+    if (!confirm(`Réactiver ${u.username} ?`)) return;
+    try {
+      const { data } = await API.post(`/admin/users/${u.id}/unsuspend/`);
+      setMsg(data.detail);
+      load();
+      if (selectedUser?.id === u.id) {
+        setSelectedUser({ ...selectedUser, email_verified: true });
+      }
+      setTimeout(() => setMsg(""), 3000);
+    } catch (ex) {
+      setErr(ex.response?.data?.detail || "Erreur");
+    }
+  };
+
   const photoSrc = me.photo_url ? `${me.photo_url}?v=${photoVer}` : null;
 
   return (
@@ -189,11 +227,80 @@ export default function Profile() {
         </form>
       )}
 
+      {/* ===== Modal détails utilisateur (admin) ===== */}
+      {selectedUser && (
+        <div role="dialog" aria-modal="true"
+             style={{
+               position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+               background: "rgba(0,0,0,0.5)", display: "flex",
+               alignItems: "center", justifyContent: "center", zIndex: 1000,
+               padding: "1rem",
+             }}
+             onClick={() => setSelectedUser(null)}>
+          <div className="card" style={{ maxWidth: 500, width: "100%" }}
+               onClick={(e) => e.stopPropagation()}>
+            <h2>{selectedUser.username}</h2>
+            <p><strong>Prénom :</strong> {selectedUser.first_name || "—"}</p>
+            <p><strong>Nom :</strong> {selectedUser.last_name || "—"}</p>
+            <p><strong>Email :</strong> {selectedUser.email}</p>
+            <p><strong>Âge :</strong> {selectedUser.age}</p>
+            <p><strong>Genre :</strong> {GENDER_LABEL[selectedUser.gender]}</p>
+            <p><strong>Date de naissance :</strong> {selectedUser.date_naissance || "—"}</p>
+            <p><strong>Rôle :</strong> {selectedUser.role}</p>
+            <p><strong>Niveau :</strong> {LEVEL_LABEL[selectedUser.level]}</p>
+            <p><strong>Points :</strong> {selectedUser.points?.toFixed(2)}</p>
+            <p><strong>Connexions :</strong> {selectedUser.nb_connexions}</p>
+            <p><strong>Actions :</strong> {selectedUser.nb_actions}</p>
+            <p>
+              <strong>Statut :</strong>{" "}
+              {selectedUser.email_verified
+                ? <span className="badge on">✔ Actif</span>
+                : <span className="badge off">⏸ Suspendu</span>}
+            </p>
+
+            {/* Actions admin */}
+            {admin && !selectedUser.is_staff && (
+              <div style={{ marginTop: 15 }}>
+                {selectedUser.email_verified ? (
+                  <button className="btn danger" onClick={() => suspendUser(selectedUser)}>
+                    ⏸ Suspendre l'utilisateur
+                  </button>
+                ) : (
+                  <button className="btn success" onClick={() => unsuspendUser(selectedUser)}>
+                    ▶ Réactiver l'utilisateur
+                  </button>
+                )}
+              </div>
+            )}
+            {admin && selectedUser.is_staff && (
+              <p style={{ color: "#666", fontStyle: "italic" }}>
+                Les administrateurs ne peuvent pas être suspendus.
+              </p>
+            )}
+
+            <button className="btn ghost" style={{ marginTop: 10 }}
+                    onClick={() => setSelectedUser(null)}>Fermer</button>
+          </div>
+        </div>
+      )}
+
       <section aria-labelledby="others-t">
-        <h2 id="others-t">Autres membres de la maison</h2>
+        <h2 id="others-t">
+          {admin ? "Tous les utilisateurs" : "Autres membres de la maison"}
+        </h2>
+        {admin && (
+          <p style={{ fontSize: "0.9em", color: "#666" }}>
+            🛡 Cliquez sur un utilisateur pour voir ses détails et le suspendre / réactiver.
+          </p>
+        )}
         <div className="cards">
           {others.map((u) => (
-            <article key={u.id} className="card">
+            <article key={u.id} className="card"
+                     role={admin ? "button" : undefined}
+                     tabIndex={admin ? 0 : undefined}
+                     style={admin ? { cursor: "pointer" } : {}}
+                     onClick={admin ? () => setSelectedUser(u) : undefined}
+                     onKeyDown={admin ? (e) => (e.key === "Enter" || e.key === " ") && setSelectedUser(u) : undefined}>
               {u.photo_url && <img src={`${u.photo_url}?v=${photoVer}`}
                                    alt={`Photo de ${u.username}`}
                                    className="profile-photo" style={{ width: 60, height: 60 }} />}
@@ -202,6 +309,13 @@ export default function Profile() {
               <p><strong>Rôle :</strong> {u.role}</p>
               <p><strong>Niveau :</strong> {LEVEL_LABEL[u.level]}</p>
               <p><strong>Points :</strong> {u.points?.toFixed(2)}</p>
+              {admin && (
+                <p>
+                  {u.email_verified
+                    ? <span className="badge on">✔ Actif</span>
+                    : <span className="badge off">⏸ Suspendu</span>}
+                </p>
+              )}
             </article>
           ))}
         </div>

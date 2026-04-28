@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import API, { isLoggedIn } from "../api";
 
 const TYPES = [
@@ -12,6 +12,7 @@ const TYPES = [
 ];
 
 export default function Devices() {
+  const nav = useNavigate();
   const [devices, setDevices] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -33,24 +34,11 @@ export default function Devices() {
 
   const set = (k, v) => setFilters({ ...filters, [k]: v });
 
-  const CardContent = ({ d }) => (
-    <>
-      <h3>{d.name}</h3>
-      <p><strong>Type :</strong> {d.type_display}</p>
-      <p><strong>Pièce :</strong> {d.room_name || "—"}</p>
-      <p><strong>Marque :</strong> {d.brand || "—"}</p>
-      <p><strong>Batterie :</strong> {d.battery}%</p>
-      <p>
-        <span className={"badge " + d.status}>{d.status_display}</span>
-        {d.needs_maintenance && (
-          <span className="badge warning" style={{ marginLeft: 5 }}>⚠ maintenance</span>
-        )}
-        {d.is_security && (
-          <span className="badge info" style={{ marginLeft: 5 }}>🔒</span>
-        )}
-      </p>
-    </>
-  );
+  // Visiteur : redirect direct vers /login (comme pour Services)
+  const handleClick = (id) => {
+    if (logged) nav(`/devices/${id}`);
+    else nav("/login");
+  };
 
   return (
     <main className="container" id="main">
@@ -58,8 +46,7 @@ export default function Devices() {
       {!logged && (
         <div className="alert info">
           🔒 Vous êtes en mode visiteur. <Link to="/login">Connectez-vous</Link>{" "}
-          ou <Link to="/register">inscrivez-vous</Link> pour consulter les détails
-          d'un objet.
+          ou <Link to="/register">inscrivez-vous</Link> pour consulter les détails.
         </div>
       )}
 
@@ -92,20 +79,27 @@ export default function Devices() {
 
       <div className="cards">
         {devices.map((d) => (
-          logged ? (
-            <Link key={d.id} to={`/devices/${d.id}`} className="card">
-              <CardContent d={d} />
-            </Link>
-          ) : (
-            <article key={d.id} className="card"
-                     style={{ cursor: "not-allowed", opacity: 0.85 }}
-                     aria-label="Détails réservés aux membres connectés">
-              <CardContent d={d} />
-              <p style={{ fontSize: "0.8rem", color: "#999", marginTop: 5 }}>
-                🔒 Connectez-vous pour voir les détails
-              </p>
-            </article>
-          )
+          <article key={d.id} className="card"
+                   role="button" tabIndex={0}
+                   style={{ cursor: "pointer" }}
+                   onClick={() => handleClick(d.id)}
+                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleClick(d.id)}
+                   aria-label={`Voir ${d.name}`}>
+            <h3>{d.name}</h3>
+            <p><strong>Type :</strong> {d.type_display}</p>
+            <p><strong>Pièce :</strong> {d.room_name || "—"}</p>
+            <p><strong>Marque :</strong> {d.brand || "—"}</p>
+            <p><strong>Batterie :</strong> {d.battery}%</p>
+            <p>
+              <span className={"badge " + d.status}>{d.status_display}</span>
+              {d.needs_maintenance && (
+                <span className="badge warning" style={{ marginLeft: 5 }}>⚠ maintenance</span>
+              )}
+              {d.is_security && (
+                <span className="badge info" style={{ marginLeft: 5 }}>🔒</span>
+              )}
+            </p>
+          </article>
         ))}
       </div>
     </main>

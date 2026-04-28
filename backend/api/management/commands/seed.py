@@ -1,18 +1,21 @@
 import random
-from datetime import date, time
+from datetime import date, time, datetime, timedelta
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 from api.models import (User, Room, Device, Action, Stat,
                         Category, Service, DeletionRequest)
 
 
 class Command(BaseCommand):
-    help = "Remplit la BDD avec des données initiales."
+    help = "Remplit la BDD SmartHouse avec des données initiales."
 
     def handle(self, *args, **options):
         self.stdout.write("Nettoyage…")
         for m in (DeletionRequest, Stat, Action, Service, Device, Room, Category):
             m.objects.all().delete()
         User.objects.filter(is_superuser=False).delete()
+        # Aussi supprimer l'admin pour un seed propre
+        User.objects.filter(username="admin").delete()
 
         # --- Catégories ---
         cats = {}
@@ -33,9 +36,8 @@ class Command(BaseCommand):
             ("Jardin", "jardin"),
         ]]
 
-        # --- Utilisateurs (rôle = parent ou enfant, déterminé par allowed_members) ---
+        # --- Utilisateurs ---
         users_data = [
-            # user, email, role, age, level, pts, gender, first, last, dob
             ("alice",   "alice@maison.fr",   "parent", 35, "expert",        20, "F", "Alice",   "Martin",  date(1990, 5, 12)),
             ("bob",     "bob@maison.fr",     "parent", 37, "avance",        12, "M", "Bob",     "Martin",  date(1988, 3, 8)),
             ("charlie", "charlie@maison.fr", "enfant", 10, "intermediaire",  6, "M", "Charlie", "Martin",  date(2015, 7, 19)),
@@ -49,15 +51,12 @@ class Command(BaseCommand):
             user.level, user.points = lvl, pts
             user.gender, user.date_naissance = gen, dob
             user.is_approved = True
-            user.email_verified = True  # déjà validés (seed)
-            user.nb_connexions = random.randint(5, 40)
-            user.nb_actions = random.randint(10, 100)
+            user.email_verified = True
             user.save()
             users.append(user)
 
-        # --- Objets connectés (TOUS à 100% batterie au départ) ---
+        # --- Objets connectés (TOUS à 100% batterie) ---
         devices_data = [
-            # name, type, room, cat, status, value, target, brand, start, end
             ("Thermostat Salon",    "thermostat",     rooms[0], cats["Confort"],        "on",  21, 22, "Philips",    time(6,0),  time(23,0)),
             ("Caméra entrée",       "camera",         rooms[0], cats["Sécurité"],       "on",   0,  0, "Hikvision",  None, None),
             ("Lave-linge",          "lave_linge",     rooms[5], cats["Électroménager"], "off",  0,  0, "Bosch",      time(8,0),  time(20,0)),
@@ -78,23 +77,22 @@ class Command(BaseCommand):
         for name, t, room, cat, st, val, tgt, brand, start, end in devices_data:
             d = Device.objects.create(
                 name=name, type=t, room=room, category=cat, status=st,
-                battery=100,  # ✅ Tous à 100% au départ
+                battery=100,
                 value=val, target_value=tgt, brand=brand,
                 start_time=start, end_time=end,
                 user=random.choice(users[:2]),
                 description=f"{name} — marque {brand}. Connecté en Wi-Fi.",
-                last_maintenance=date(2025, 10, 15),  # maintenance récente
+                last_maintenance=date(2025, 10, 15),
             )
             devices.append(d)
 
-        # --- 2 objets avec maintenance ancienne (>6 mois) pour la démo ---
-        # On garde la batterie à 100% mais on met une date de maintenance ancienne
-        devices[4].last_maintenance = date(2024, 1, 15)  # Aspirateur robot
+        # --- 2 objets avec maintenance ancienne ---
+        devices[4].last_maintenance = date(2024, 1, 15)
         devices[4].save()
-        devices[10].last_maintenance = date(2023, 8, 10)  # Arrosage
+        devices[10].last_maintenance = date(2023, 8, 10)
         devices[10].save()
 
-        # --- Services/outils variés ---
+        # --- Services ---
         services = [
             ("Suivi consommation électrique",
              "Visualise la consommation kWh de tous tes appareils en temps réel.",
@@ -136,37 +134,100 @@ class Command(BaseCommand):
                 Stat.objects.create(device=d,
                                     consumption=round(random.uniform(0.1, 3.5), 2))
 
-        # --- Historique ---
-        for u in users:
-            for _ in range(random.randint(3, 8)):
-                Action.objects.create(user=u, action_type="login",
-                                      description="Connexion à la plateforme")
+        # --- Historique varié : connexions étalées sur plusieurs jours/heures ---
+        # Pour chaque user, génère des connexions à des moments réalistes
+        # (matin, midi, soir, sur les 3 dernières semaines)
+        now = timezone.now()
+        # Profils différents par utilisateur
+        user_profiles = {
+            users[0].id: 25,  # alice : très active
+            users[1].id: 18,  # bob : assez active
+            users[2].id: 8,   # charlie : enfant, moins de connexions
+            users[3].id: 4,   # demo : peu utilisé
+        }
 
-        # --- Une demande de suppression de démo ---
+        # Heures réalistes (matin, midi, soir)
+        realistic_hours = [
+            (7, 30), (8, 15), (12, 5), (12, 45),
+            (18, 20), (19, 30), (20, 45), (21, 15), (22, 0),
+        ]
+
+        for user in users:
+            n_logins = user_profiles[user.id]
+            user_actions = []
+            for _ in range(n_logins):
+                # Date aléatoire dans les 21 derniers jours
+                days_ago = random.randint(0, 20)
+                hour, minute = random.choice(realistic_hours)
+                # Petite variation aléatoire
+                minute_offset = random.randint(-15, 15)
+                date_login = now - timedelta(days=days_ago)
+                date_login = date_login.replace(
+                    hour=hour, minute=max(0, min(59, minute + minute_offset)),
+                    second=random.randint(0, 59), microsecond=0)
+                user_actions.append(date_login)
+
+            # Tri pour générer dans l'ordre chronologique (plus récent en dernier)
+            user_actions.sort()
+
+            for d_login in user_actions:
+                a = Action.objects.create(
+                    user=user,
+                    action_type="login",
+                    description="Connexion à la plateforme",
+                )
+                # auto_now_add empêche de fixer la date à la création :
+                # on l'écrase via update juste après
+                Action.objects.filter(pk=a.pk).update(date=d_login)
+
+            # Quelques consultations aussi pour réalisme
+            for _ in range(random.randint(3, 8)):
+                days_ago = random.randint(0, 14)
+                hour, minute = random.choice(realistic_hours)
+                date_consult = now - timedelta(days=days_ago)
+                date_consult = date_consult.replace(
+                    hour=hour, minute=minute,
+                    second=random.randint(0, 59), microsecond=0)
+                device = random.choice(devices)
+                a = Action.objects.create(
+                    user=user,
+                    action_type="consult",
+                    device=device,
+                    description=f"Consultation de {device.name}",
+                )
+                Action.objects.filter(pk=a.pk).update(date=date_consult)
+
+            # Mettre à jour le compteur nb_connexions du user
+            user.nb_connexions = n_logins
+            user.nb_actions = n_logins + random.randint(3, 8)
+            user.save()
+
+        # --- Demande de suppression de démo ---
         DeletionRequest.objects.create(
-            device=devices[4],  # Aspirateur robot
-            requested_by=users[1],  # bob
+            device=devices[4],
+            requested_by=users[1],
             reason="Batterie en fin de vie, on va le remplacer.",
             status="pending",
         )
 
-        # --- Superuser ---
-        if not User.objects.filter(username="admin").exists():
-            User.objects.create_superuser(
-                username="admin", email="admin@maison.fr",
-                password="admin1234", role="parent",
-                level="expert", points=100, age=40,
-                first_name="Admin", last_name="System",
-                is_approved=True, email_verified=True)
+        # --- Superuser admin ---
+        User.objects.create_superuser(
+            username="admin", email="admin@maison.fr",
+            password="admin1234", role="parent",
+            level="expert", points=100, age=40,
+            first_name="Admin", last_name="System",
+            is_approved=True, email_verified=True)
 
-        self.stdout.write(self.style.SUCCESS("✔ Données générées !"))
+        self.stdout.write(self.style.SUCCESS("✔ Données SmartHouse générées !"))
         self.stdout.write(" Tous les objets ont 100% de batterie au départ.")
         self.stdout.write(" 2 objets ont une maintenance ancienne (démo Maintenance).")
+        self.stdout.write(" Connexions étalées sur 21 jours, à des heures réalistes.")
+        self.stdout.write("")
         self.stdout.write(" Comptes : alice / bob / charlie / demo (mdp : demo1234)")
         self.stdout.write(" Admin   : admin / admin1234")
         self.stdout.write("")
         self.stdout.write(" Emails pré-autorisés à s'inscrire :")
-        self.stdout.write("   - acfiren12@gmail.com (parent)")
-        self.stdout.write("   - famille.dupont@gmail.com (parent)")
-        self.stdout.write("   - lucas.dupont@gmail.com (enfant)")
-        self.stdout.write("   - marie.martin@gmail.com (parent)")
+        self.stdout.write("   - acfiren12@gmail.com (parent) → MAIL DE CONFIRMATION")
+        self.stdout.write("   - famille.dupont@gmail.com (parent) → activation auto")
+        self.stdout.write("   - lucas.dupont@gmail.com (enfant) → activation auto")
+        self.stdout.write("   - marie.martin@gmail.com (parent) → activation auto")

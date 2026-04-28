@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { isLoggedIn, getUser, clearAuth, isAdvanced, refreshUser } from "../api";
+import { isLoggedIn, getUser, clearAuth, isAdvanced, isAdmin, refreshUser } from "../api";
 
 export default function Navbar() {
   const nav = useNavigate();
@@ -11,9 +11,8 @@ export default function Navbar() {
 
   const logged = isLoggedIn();
   const advanced = isAdvanced();
-  const isAdmin = user?.is_staff || user?.username === "admin";
+  const admin = isAdmin();
 
-  // Rafraîchit le user à chaque changement de route (données live)
   useEffect(() => {
     if (logged) {
       refreshUser().then(setUser).catch(() => {});
@@ -21,7 +20,6 @@ export default function Navbar() {
     setOpenMenu(null);
   }, [location.pathname]);
 
-  // Ferme le menu si clic à l'extérieur
   useEffect(() => {
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpenMenu(null);
@@ -35,7 +33,7 @@ export default function Navbar() {
 
   return (
     <nav className="navbar" aria-label="Navigation principale" ref={ref}>
-      <Link to="/" className="brand">🏠 Maison Intelligente</Link>
+      <Link to="/" className="brand">🏠 SmartHouse</Link>
 
       <div className="links">
         <Link to="/">Accueil</Link>
@@ -54,7 +52,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Catégorie : Mon espace (connecté) */}
+        {/* Mon espace (connecté, sauf admin pour Mes demandes) */}
         {logged && (
           <div className="dropdown">
             <button className="dropdown-btn" onClick={() => toggle("space")}
@@ -66,13 +64,14 @@ export default function Navbar() {
                 <Link to="/dashboard">📊 Tableau de bord</Link>
                 <Link to="/profile">👤 Profil</Link>
                 <Link to="/level">🏆 Niveau</Link>
-                <Link to="/my-requests">📩 Mes demandes</Link>
+                {/* Admin n'envoie pas de demandes → pas d'onglet "Mes demandes" */}
+                {!admin && <Link to="/my-requests">📩 Mes demandes</Link>}
               </div>
             )}
           </div>
         )}
 
-        {/* Catégorie : Gestion (avancé/expert) */}
+        {/* Gestion (avancé/expert + pas enfant) */}
         {logged && advanced && (
           <div className="dropdown">
             <button className="dropdown-btn" onClick={() => toggle("manage")}
@@ -85,7 +84,7 @@ export default function Navbar() {
                 <Link to="/maintenance">🛠 Maintenance</Link>
                 <Link to="/history">📜 Historique</Link>
                 <Link to="/stats">📈 Statistiques</Link>
-                {isAdmin && <Link to="/admin-requests">🛡 Gérer demandes</Link>}
+                {admin && <Link to="/admin-requests">🛡 Gérer demandes</Link>}
               </div>
             )}
           </div>

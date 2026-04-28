@@ -55,7 +55,7 @@ export default function App() {
         <Route path="/admin-requests" element={<ProtectedRoute><AdminRequests /></ProtectedRoute>} />
       </Routes>
       <footer>
-        <p>Maison Intelligente — Projet CY Tech ING1 2025-2026</p>
+        <p>SmartHouse — Projet CY Tech ING1 2025-2026</p>
       </footer>
     </>
   );

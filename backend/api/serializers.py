@@ -2,12 +2,12 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import (User, Room, Device, Action, Stat,
                      Category, Service, DeletionRequest)
-from .allowed_members import is_allowed, get_role
+from .allowed_members import is_allowed, get_role, requires_email_verification
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     """Inscription : le rôle est déterminé par l'email pré-autorisé,
-    pas choisi par l'utilisateur."""
+    pas choisi par l'utilisateur. L'envoi du mail dépend du flag de l'email."""
     password = serializers.CharField(write_only=True, required=True,
                                      validators=[validate_password])
 
@@ -19,13 +19,11 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         v = value.lower().strip()
-        # 1. Vérifier que l'email est dans la liste des membres autorisés
         if not is_allowed(v):
             raise serializers.ValidationError(
                 "Cet email n'est pas autorisé. Seuls les membres de la maison "
                 "peuvent s'inscrire. Contactez l'administrateur si vous pensez "
                 "que c'est une erreur.")
-        # 2. Vérifier qu'aucun compte n'existe déjà avec cet email
         if User.objects.filter(email__iexact=v).exists():
             raise serializers.ValidationError(
                 "Un compte existe déjà avec cet email.")
@@ -34,16 +32,19 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         pwd = validated_data.pop("password")
         email = validated_data["email"]
-        # Le rôle est déterminé automatiquement
         role = get_role(email)
-        # Désactivé jusqu'à validation email
+        # email_verified = False uniquement si l'email exige un mail
+        # Sinon, le compte sera auto-activé à la 1ère connexion
+        needs_mail = requires_email_verification(email)
         user = User.objects.create_user(
             password=pwd,
             role=role,
-            email_verified=False,
-            is_approved=True,  # déjà approuvé car email pré-autorisé
+            email_verified=False,  # toujours False à la création
+            is_approved=True,
             **validated_data,
         )
+        # On stocke le flag dans un attribut transient pour la vue
+        user._needs_mail = needs_mail
         return user
 
 

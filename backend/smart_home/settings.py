@@ -112,7 +112,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "acfiren12@gmail.com"
 EMAIL_HOST_PASSWORD = "aqubxazmdrhjejwc"  # mot de passe d'application Gmail (16 car)
-DEFAULT_FROM_EMAIL = "Maison Intelligente <acfiren12@gmail.com>"
+DEFAULT_FROM_EMAIL = "SmartHouse <acfiren12@gmail.com>"
 
 # URL frontend pour les liens dans les emails
 FRONTEND_URL = "http://127.0.0.1:5173"

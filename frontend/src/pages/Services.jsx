@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import API from "../api";
+import { Link, useNavigate } from "react-router-dom";
+import API, { isLoggedIn } from "../api";
 
 const TYPES = [
   ["energie", "Consommation énergétique"],
@@ -15,8 +15,10 @@ const ICONS = {
 };
 
 export default function Services() {
+  const nav = useNavigate();
   const [services, setServices] = useState([]);
   const [filters, setFilters] = useState({ type: "", active: "", q: "" });
+  const logged = isLoggedIn();
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -26,10 +28,21 @@ export default function Services() {
 
   const set = (k, v) => setFilters({ ...filters, [k]: v });
 
+  const handleClick = (id) => {
+    if (logged) nav(`/services/${id}`);
+    else nav("/login");
+  };
+
   return (
     <main className="container" id="main">
-      <h1>Services & outils de la plateforme</h1>
-      <p>Services variés proposés : consommation énergétique, sécurité, confort, divertissement…</p>
+      <h1>Services & outils SmartHouse</h1>
+      <p>Services variés : consommation énergétique, sécurité, confort, divertissement…</p>
+
+      {!logged && (
+        <div className="alert info">
+          🔒 Vous êtes en mode visiteur. <Link to="/login">Connectez-vous</Link> pour consulter les détails.
+        </div>
+      )}
 
       <section aria-label="Filtres">
         <div className="filters">
@@ -52,7 +65,12 @@ export default function Services() {
 
       <div className="cards">
         {services.map((s) => (
-          <Link key={s.id} to={`/services/${s.id}`} className="card">
+          <article key={s.id} className="card"
+                   role="button" tabIndex={0}
+                   style={{ cursor: "pointer" }}
+                   onClick={() => handleClick(s.id)}
+                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleClick(s.id)}
+                   aria-label={`Voir ${s.name}`}>
             <p className="icon" aria-hidden="true">{ICONS[s.type] || "🔧"}</p>
             <h3>{s.name}</h3>
             <p>{s.description.slice(0, 100)}{s.description.length > 100 ? "…" : ""}</p>
@@ -63,7 +81,7 @@ export default function Services() {
             <span className={"badge " + (s.active ? "on" : "off")}>
               {s.active ? "Actif" : "Inactif"}
             </span>
-          </Link>
+          </article>
         ))}
       </div>
     </main>

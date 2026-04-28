@@ -17,12 +17,13 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view()),
     path("change-password/", views.change_password),
     path("verify/<uuid:token>/", views.verify_email),
-    path("resend-verification/", views.resend_verification),
 
     # PROFILE
     path("profile/", views.ProfileView.as_view()),
     path("profile/set-level/", views.set_level),
     path("users/", views.list_users),
+    path("admin/users/<int:user_id>/suspend/", views.admin_suspend_user),
+    path("admin/users/<int:user_id>/unsuspend/", views.admin_unsuspend_user),
 
     # DEVICES / HISTORIQUE / STATS
     path("devices/<int:pk>/toggle/", views.toggle_device),

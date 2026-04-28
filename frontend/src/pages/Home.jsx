@@ -4,10 +4,11 @@ export default function Home() {
   return (
     <main className="container" id="main">
       <section className="hero" aria-labelledby="hero-title">
-        <h1 id="hero-title">Bienvenue dans votre maison intelligente</h1>
+        <h1 id="hero-title">Bienvenue sur SmartHouse</h1>
         <p>
-          Centralisez la gestion de vos objets connectés et profitez de services
-          domotiques variés : thermostats, caméras, appareils ménagers, volets, arrosage…
+          La plateforme qui centralise la gestion de vos objets connectés et
+          de vos services domotiques : thermostats, caméras, appareils ménagers,
+          volets, arrosage…
         </p>
         <p style={{ fontSize: "0.9em", opacity: 0.85 }}>
           🔓 Mode visiteur libre · 🏠 Inscription réservée aux membres de la maison
@@ -17,7 +18,7 @@ export default function Home() {
         <Link to="/register" className="btn">S'inscrire</Link>
       </section>
 
-      <h2>Les 3 modules de la plateforme</h2>
+      <h2>Les 3 modules de SmartHouse</h2>
       <div className="cards">
         <article className="card">
           <p className="icon" aria-hidden="true">🔍</p>

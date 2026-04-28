@@ -4,7 +4,7 @@ from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.db.models import Sum, Q
 from django.utils import timezone
-from rest_framework import generics, viewsets, status
+from rest_framework import generics, viewsets, status, serializers as drf_serializers
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -18,19 +18,19 @@ from .serializers import (UserRegisterSerializer, UserSerializer,
                           RoomSerializer, DeviceSerializer, ActionSerializer,
                           StatSerializer, CategorySerializer, ServiceSerializer,
                           DeletionRequestSerializer, PasswordChangeSerializer)
+from .allowed_members import requires_email_verification
 
 
 # ============================================================
 # HELPER : envoi de l'email de validation
 # ============================================================
 def send_verification_email(user):
-    """Envoie l'email de confirmation avec lien de validation."""
     verify_url = f"{settings.FRONTEND_URL}/verify/{user.verification_token}"
 
-    subject = "🏠 Confirmez votre inscription — Maison Intelligente"
+    subject = "🏠 Confirmez votre inscription — SmartHouse"
     message = f"""Bonjour {user.first_name or user.username},
 
-Bienvenue sur la plateforme Maison Intelligente !
+Bienvenue sur SmartHouse !
 
 Pour finaliser votre inscription et activer votre compte, cliquez sur le lien
 ci-dessous :
@@ -43,20 +43,20 @@ Vos informations :
 
 Si vous n'êtes pas à l'origine de cette inscription, ignorez ce mail.
 
-— L'équipe Maison Intelligente (CY Tech ING1 2025-2026)
+— L'équipe SmartHouse (CY Tech ING1 2025-2026)
 """
 
     html_message = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #26215C, #4f46e5);
                   color: white; padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
-        <h1 style="margin: 0;">🏠 Maison Intelligente</h1>
+        <h1 style="margin: 0;">🏠 SmartHouse</h1>
         <p style="margin: 10px 0 0; opacity: 0.9;">Confirmez votre inscription</p>
       </div>
       <div style="background: white; padding: 30px; border: 1px solid #e5e7eb;
                   border-top: none; border-radius: 0 0 12px 12px;">
         <p>Bonjour <strong>{user.first_name or user.username}</strong>,</p>
-        <p>Bienvenue sur la plateforme ! Pour activer votre compte, cliquez sur
+        <p>Bienvenue sur SmartHouse ! Pour activer votre compte, cliquez sur
            le bouton ci-dessous :</p>
         <p style="text-align: center; margin: 30px 0;">
           <a href="{verify_url}"
@@ -73,11 +73,11 @@ Si vous n'êtes pas à l'origine de cette inscription, ignorez ce mail.
         <p style="color: #666; font-size: 0.85em;">
           <strong>Vos informations :</strong><br>
           Pseudo : {user.username}<br>
-          Rôle attribué automatiquement : <strong>{user.get_role_display()}</strong>
+          Rôle attribué : <strong>{user.get_role_display()}</strong>
         </p>
         <p style="color: #999; font-size: 0.8em; margin-top: 30px;">
           Si vous n'êtes pas à l'origine de cette inscription, ignorez ce mail.<br>
-          — Maison Intelligente · CY Tech ING1 2025-2026
+          — SmartHouse · CY Tech ING1 2025-2026
         </p>
       </div>
     </div>
@@ -94,7 +94,6 @@ Si vous n'êtes pas à l'origine de cette inscription, ignorez ce mail.
         )
         return True
     except Exception as e:
-        # On log mais on n'empêche pas l'inscription
         print(f"⚠ Erreur envoi email à {user.email} : {e}")
         return False
 
@@ -111,18 +110,27 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        # Envoie le mail de validation
-        sent = send_verification_email(user)
+        needs_mail = getattr(user, "_needs_mail", False)
+
+        sent = False
+        if needs_mail:
+            sent = send_verification_email(user)
+            message = ("Inscription réussie ! Un email de validation vous a "
+                       "été envoyé. Cliquez sur le lien dans l'email pour "
+                       "activer votre compte.")
+        else:
+            # Pas de mail requis : sera auto-activé à la 1ère connexion
+            message = ("Inscription réussie ! Votre compte sera activé "
+                       "automatiquement lors de votre première connexion.")
+
         return Response({
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "role": user.role,
+            "needs_mail": needs_mail,
             "email_sent": sent,
-            "message": (
-                "Inscription réussie ! Un email de validation vous a été envoyé. "
-                "Cliquez sur le lien dans l'email pour activer votre compte."
-            ),
+            "message": message,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -130,11 +138,20 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         user = self.user
-        # Bloquer si email pas vérifié
+
+        # Auto-activation : si l'email N'exige PAS de mail et qu'il n'est pas
+        # encore vérifié, on l'active à la 1ère connexion
         if not user.email_verified and not user.is_superuser:
-            raise serializers.ValidationError(
-                "Votre email n'a pas encore été validé. "
-                "Cliquez sur le lien dans l'email reçu pour activer votre compte.")
+            if not requires_email_verification(user.email):
+                # Auto-activation
+                user.email_verified = True
+                user.save()
+            else:
+                # Mail requis et pas encore validé → bloquer
+                raise drf_serializers.ValidationError(
+                    "Votre email n'a pas encore été validé. "
+                    "Cliquez sur le lien dans l'email reçu pour activer votre compte.")
+
         user.points = (user.points or 0) + 0.25
         user.nb_connexions = (user.nb_connexions or 0) + 1
         user.save()
@@ -143,10 +160,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         ctx = {"request": self.context.get("request")}
         data["user"] = UserSerializer(user, context=ctx).data
         return data
-
-
-# Import nécessaire pour l'erreur ci-dessus
-from rest_framework import serializers
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -183,26 +196,12 @@ def verify_email(request, token):
     })
 
 
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def resend_verification(request):
-    """Renvoie l'email de validation."""
-    email = request.data.get("email", "").lower().strip()
-    try:
-        user = User.objects.get(email__iexact=email)
-    except User.DoesNotExist:
-        return Response({"detail": "Aucun compte trouvé avec cet email."}, status=404)
-    if user.email_verified:
-        return Response({"detail": "Cet email est déjà validé."}, status=400)
-    sent = send_verification_email(user)
-    return Response({"detail": "Email renvoyé." if sent else "Erreur d'envoi.",
-                     "sent": sent})
-
-
 # ============================================================
 # PROFILE
 # ============================================================
 class ProfileView(generics.RetrieveUpdateAPIView):
+    """Le PUT/PATCH partiel évite le bug 'username obligatoire' lors de
+    l'upload de photo seule."""
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -215,12 +214,50 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         ctx["request"] = self.request
         return ctx
 
+    def update(self, request, *args, **kwargs):
+        # Force partial=True : on ne demande que les champs envoyés
+        kwargs["partial"] = True
+        return super().update(request, *args, **kwargs)
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_users(request):
     users = User.objects.exclude(id=request.user.id)
     return Response(UserSerializer(users, many=True, context={"request": request}).data)
+
+
+# ----- ADMIN : suspendre / réactiver un utilisateur ---------
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_suspend_user(request, user_id):
+    """L'admin suspend un utilisateur en désactivant son email_verified."""
+    if not request.user.is_staff:
+        return Response({"detail": "Admin uniquement"}, status=403)
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return Response({"detail": "Utilisateur introuvable"}, status=404)
+    if user.is_superuser:
+        return Response({"detail": "Impossible de suspendre un super-utilisateur"},
+                        status=400)
+    user.email_verified = False
+    user.save()
+    return Response({"detail": f"✔ Utilisateur {user.username} suspendu."})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_unsuspend_user(request, user_id):
+    if not request.user.is_staff:
+        return Response({"detail": "Admin uniquement"}, status=403)
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return Response({"detail": "Utilisateur introuvable"}, status=404)
+    user.email_verified = True
+    user.save()
+    return Response({"detail": f"✔ Utilisateur {user.username} réactivé."})
 
 
 @api_view(["POST"])
@@ -296,9 +333,8 @@ class DeviceViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(instance).data)
 
     def perform_create(self, serializer):
-        # Restriction enfant
         if self.request.user.is_child():
-            raise serializers.ValidationError(
+            raise drf_serializers.ValidationError(
                 "Les enfants ne peuvent pas ajouter d'objets.")
         device = serializer.save(user=self.request.user)
         self.request.user.nb_actions += 1
@@ -308,7 +344,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         if self.request.user.is_child():
-            raise serializers.ValidationError(
+            raise drf_serializers.ValidationError(
                 "Les enfants ne peuvent pas modifier les objets.")
         device = serializer.save()
         self.request.user.nb_actions += 1
@@ -350,7 +386,6 @@ def toggle_device(request, pk):
         device = Device.objects.get(pk=pk)
     except Device.DoesNotExist:
         return Response({"detail": "Non trouvé"}, status=404)
-    # Restriction enfant sur les objets de sécurité
     if not request.user.can_toggle_device(device):
         return Response(
             {"detail": "🔒 Les enfants ne peuvent pas activer/désactiver "
@@ -413,7 +448,7 @@ class DeletionRequestViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if self.request.user.is_child():
-            raise serializers.ValidationError(
+            raise drf_serializers.ValidationError(
                 "Les enfants ne peuvent pas demander de suppression.")
         dr = serializer.save(requested_by=self.request.user)
         Action.objects.create(
@@ -422,9 +457,6 @@ class DeletionRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="approve")
     def approve(self, request, pk=None):
-        """Admin approuve : supprime l'objet, marque la demande comme approuvée.
-        Bug fix : on capture le nom AVANT toute suppression, et on traite la
-        demande dans un ordre qui ne casse pas les références."""
         if not request.user.is_staff:
             return Response({"detail": "Admin uniquement"}, status=403)
         dr = self.get_object()
@@ -432,18 +464,13 @@ class DeletionRequestViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Demande déjà traitée"}, status=400)
         device_name = dr.device.name
         device_id = dr.device.id
-        # 1. Marquer la demande comme approuvée AVANT de supprimer le device
-        #    (sinon le CASCADE supprime aussi la demande et on perd l'info)
         dr.status = "approved"
         dr.resolved_at = timezone.now()
-        # On détache le device de la demande pour éviter le CASCADE
         device = dr.device
         dr.save()
-        # 2. Créer l'action AVANT de supprimer le device (sans FK device)
         Action.objects.create(
             user=request.user, action_type="update",
             description=f"Suppression de {device_name} (demande approuvée)")
-        # 3. Maintenant on peut supprimer le device en toute sécurité
         device.delete()
         return Response({
             "detail": f"✔ Objet « {device_name} » supprimé. Demande traitée.",
