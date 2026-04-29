@@ -4,7 +4,7 @@ Projet CY Tech ING1 2025-2026.
 Plateforme complète de gestion d'une maison intelligente : objets connectés,
 services domotiques, niveaux utilisateurs, historique, statistiques.
 
-**Stack :** Django 5 + DRF + JWT · React 18 + Vite · SQLite · Gmail SMTP · Mobile-first.
+**Stack :** Django 5 + DRF + JWT · React 18 + Vite · SQLite · Gmail SMTP · Mobile-first
 
 ---
 
